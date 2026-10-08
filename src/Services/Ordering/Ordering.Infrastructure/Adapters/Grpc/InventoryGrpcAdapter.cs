@@ -17,7 +17,7 @@ internal sealed class InventoryGrpcAdapter(
     ILogger<InventoryGrpcAdapter> logger) : IInventoryService
 {
     // Deadline tüm retry denemelerini kapsar; süre dolarsa çağrı DeadlineExceeded ile sonlanır.
-    private static readonly TimeSpan CallDeadline = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan CallDeadline = TimeSpan.FromSeconds(300);
 
     public async Task<Result<IReadOnlyList<ProductAvailability>>> CheckAvailabilityAsync(
         IReadOnlyCollection<ProductQuantity> items, CancellationToken cancellationToken = default)

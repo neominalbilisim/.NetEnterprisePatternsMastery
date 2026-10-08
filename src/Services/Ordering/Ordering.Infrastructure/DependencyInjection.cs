@@ -45,7 +45,8 @@ public static class DependencyInjection
         var address = configuration["Services:InventoryGrpc"]
             ?? throw new InvalidOperationException("Configuration 'Services:InventoryGrpc' is missing.");
 
-        services.AddGrpcClient<InventoryService.InventoryServiceClient>(options => options.Address = new Uri(address))
+    // InventoryService.InventoryServiceClient grpc Tools tarafından üretilen client sınıfıdır. DI ile inject edilebilir.
+    services.AddGrpcClient<InventoryService.InventoryServiceClient>(options => options.Address = new Uri(address))
             .ConfigureChannel(channel =>
             {
                 channel.ServiceConfig = new ServiceConfig
@@ -59,9 +60,13 @@ public static class DependencyInjection
                             {
                                 MaxAttempts = 4,
                                 InitialBackoff = TimeSpan.FromMilliseconds(500),
-                                MaxBackoff = TimeSpan.FromSeconds(3),
+                                MaxBackoff = TimeSpan.FromSeconds(5), // maksimum bekleme süresi 5 sn; retry sayısı arttıkça bekleme süresi üstel olarak artar.
                                 BackoffMultiplier = 2,
+                                // Her başarısız denemeden sonra bekleme süresi üstel olarak artar (500ms -> 1s -> 2s -> 4s).
+                                // Sunucu cevap vermiyorsa hemen üstüne gitme, her denemede bekleme süreni iki katına çıkararak sunucuya nefes alacak zaman tanı" diyen koruma kalkanıdır.
                                 RetryableStatusCodes = { StatusCode.Unavailable }
+                              // Yalnızca geçici ağ kesintileri veya pod/sunucu yeniden başlatmaları durumunda devreye girer; mantıksal hatalarda (örn: NotFound, InvalidArgument) gereksiz retry yaparak sunucuyu boğmaz.
+                              // gRPC kütüphanesi bu süreleri hesaplarken milisaniyelik rastgele sapmalar (Jitter) ekler. Örneğin tam 1.000 ms yerine 940 ms veya 1.060 ms bekler. Bunun amacı, aynı anda çöken 1.000 farklı istemcinin milisaniyesi milisaniyesine aynı anda tekrar istek atıp sunucuyu kitlemesini engellemektir.
                             }
                         }
                     }

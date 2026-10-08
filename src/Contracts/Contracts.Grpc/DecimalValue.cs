@@ -3,6 +3,7 @@ namespace Contracts.Grpc.Inventory;
 /// <summary>
 /// Protobuf DecimalValue mesajı ile .NET decimal arasında dönüşüm.
 /// units: tam kısım, nanos: 10^-9 hassasiyetinde ondalık kısım.
+/// Protobuf decimal tipleri için önerilen yaklaşım: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.DecimalValue
 /// </summary>
 public partial class DecimalValue
 {
