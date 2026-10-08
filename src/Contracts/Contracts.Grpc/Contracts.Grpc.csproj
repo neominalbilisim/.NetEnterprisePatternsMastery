@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- gRPC sözleşmesi tek yerde derlenir; hem server (Inventory) hem client (Ordering) aynı üretilmiş tipleri kullanır. -->
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Protos\inventory.proto" GrpcServices="Both" />
+  </ItemGroup>
+</Project>

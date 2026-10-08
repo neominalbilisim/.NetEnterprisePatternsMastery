@@ -1,0 +1,95 @@
+name: enterprise-patterns
+
+services:
+  # ---------------- Altyapı ----------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports:
+      - "5341:80"       # UI + ingestion
+
+  # ---------------- Dış sistem (mock) ----------------
+  legacy-erp:
+    build:
+      context: .
+      dockerfile: src/ExternalSystems/LegacyErp.Mock/Dockerfile
+    environment:
+      Chaos__FailureRate: "0.2"   # İsteklerin %20'si 503 döner -> HTTP retry gözlemlenir
+      Chaos__DelayMs: "0"
+    ports:
+      - "5003:5003"
+
+  # ---------------- Servisler ----------------
+  inventory-api:
+    build:
+      context: .
+      dockerfile: src/Services/Inventory/Inventory.Api/Dockerfile
+    environment:
+      ConnectionStrings__InventoryDb: "Host=postgres;Port=5432;Database=inventory_db;Username=postgres;Password=postgres"
+      RabbitMq__HostName: rabbitmq
+      Seq__ServerUrl: http://seq
+      Chaos__GrpcFailureRate: "0.2"  # gRPC çağrılarının %20'si Unavailable -> gRPC retry gözlemlenir
+    ports:
+      - "5002:5002"   # REST
+      - "5102:5102"   # gRPC (HTTP/2)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  ordering-api:
+    build:
+      context: .
+      dockerfile: src/Services/Ordering/Ordering.Api/Dockerfile
+    environment:
+      ConnectionStrings__OrderingDb: "Host=postgres;Port=5432;Database=ordering_db;Username=postgres;Password=postgres"
+      RabbitMq__HostName: rabbitmq
+      Seq__ServerUrl: http://seq
+      Services__InventoryGrpc: http://inventory-api:5102
+      Services__LegacyErp: http://legacy-erp:5003/
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      inventory-api:
+        condition: service_started
+      legacy-erp:
+        condition: service_started
+
+volumes:
+  postgres-data:

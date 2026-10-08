@@ -1,0 +1,44 @@
+<Project>
+  <!-- Central Package Management: paket sürümleri tek yerden yönetilir -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- CQRS / Mediator (12.x: Apache 2.0 lisanslı son ana sürüm) -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <PackageVersion Include="FluentValidation" Version="11.10.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+
+    <!-- Persistence -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+    <PackageVersion Include="EFCore.NamingConventions" Version="8.0.3" />
+    <PackageVersion Include="Dapper" Version="2.1.35" />
+
+    <!-- Outbox / Messaging -->
+    <PackageVersion Include="DotNetCore.CAP" Version="8.2.0" />
+    <PackageVersion Include="DotNetCore.CAP.PostgreSql" Version="8.2.0" />
+    <PackageVersion Include="DotNetCore.CAP.RabbitMQ" Version="8.2.0" />
+    <PackageVersion Include="DotNetCore.CAP.Dashboard" Version="8.2.0" />
+
+    <!-- Logging -->
+    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
+
+    <!-- Resiliency -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+    <PackageVersion Include="Polly.Core" Version="8.4.2" />
+
+    <!-- gRPC -->
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageVersion Include="Grpc.AspNetCore.Server.Reflection" Version="2.66.0" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.66.0" />
+    <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.66.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.28.2" />
+    <PackageVersion Include="Grpc.Tools" Version="2.66.0" />
+
+    <!-- API -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+</Project>

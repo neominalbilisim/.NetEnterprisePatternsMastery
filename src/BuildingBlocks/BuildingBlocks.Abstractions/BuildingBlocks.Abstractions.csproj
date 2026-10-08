@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tüm servislerin paylaştığı çekirdek soyutlamalar (Abstraction Core).
+       Hiçbir altyapı (EF Core, CAP, Npgsql) bağımlılığı içermez. -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Hexagonal mimarinin merkezi: Domain. Altyapıya (EF Core, CAP, HTTP) hiçbir bağımlılığı yoktur. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

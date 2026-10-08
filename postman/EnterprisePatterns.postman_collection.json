@@ -1,0 +1,818 @@
+{
+  "info": {
+    "name": "Enterprise Patterns Sample (.NET 8)",
+    "_postman_id": "8b1f6c4e-3c1a-4a55-9d1e-6f1b2d7a9e01",
+    "description": "Ordering + Inventory servisleri için örnek istekler.\n\ngRPC notu: Postman v2.1 collection formatı gRPC isteklerini saklayamaz. Postman'de New > gRPC seçip localhost:5102 adresine bağlanın ve 'Use server reflection' ile inventory.v1.InventoryService/CheckAvailability veya GetProduct metodlarını çağırın. Alternatif: src/Contracts/Contracts.Grpc/Protos/inventory.proto dosyasını içe aktarın.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Inventory (REST)",
+      "item": [
+        {
+          "name": "Get Products (Dapper)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{inventoryUrl}}/api/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Product By Id (Dapper)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{inventoryUrl}}/api/products/{{keyboardId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Product (Idempotent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{productIdempotencyKey}}"
+              }
+            ],
+            "url": "{{inventoryUrl}}/api/products",
+            "description": "Her çalıştırmada yeni bir Idempotency-Key üretilir. SKU benzersiz olduğundan ikinci farklı anahtarlı istek 409 döner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"HS-001\",\n  \"name\": \"Gaming Headset\",\n  \"unitPrice\": 1499.0,\n  \"initialStock\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('productIdempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Product - Replay Same Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{productIdempotencyKey}}"
+              }
+            ],
+            "url": "{{inventoryUrl}}/api/products",
+            "description": "Aynı Idempotency-Key ile tekrar: yeni ürün oluşturulmaz, ilk yanıttaki productId döner (IdempotencyBehavior).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"HS-001\",\n  \"name\": \"Gaming Headset\",\n  \"unitPrice\": 1499.0,\n  \"initialStock\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Reservation By Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{inventoryUrl}}/api/reservations/by-order/{{orderId}}",
+            "description": "OrderCreated event'i sonucu oluşan stok rezervasyonu (Reserved / Rejected)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Ordering (HTTP + gRPC + ACL + Outbox)",
+      "item": [
+        {
+          "name": "Check Availability (HTTP -> gRPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders/availability",
+            "description": "İstemci Ordering'e REST ile gelir; Ordering Inventory'ye gRPC ile sorar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 2\n    },\n    {\n      \"productId\": \"{{monitorId}}\",\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Happy Path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "ERP (ACL/HTTP) kredi kontrolü -> gRPC stok/fiyat -> EF Core kayıt -> Outbox (CAP). Sipariş önce Pending oluşur, StockReserved event'i ile Confirmed olur.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"{{customerCode}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 1\n    },\n    {\n      \"productId\": \"{{mouseId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (body.orderId) { pm.collectionVariables.set('orderId', body.orderId); }",
+                  "pm.test('orderId returned', () => pm.expect(body.orderId).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Replay Same Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "Aynı anahtarla tekrar: ikinci sipariş OLUŞMAZ, aynı orderId döner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"{{customerCode}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 1\n    },\n    {\n      \"productId\": \"{{mouseId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (body.orderId) { pm.collectionVariables.set('orderId', body.orderId); }",
+                  "pm.test('orderId returned', () => pm.expect(body.orderId).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Order By Id (Dapper)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderingUrl}}/api/orders/{{orderId}}",
+            "description": "Birkaç saniye sonra status alanı Pending -> Confirmed olur (asenkron akış)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Customer Orders (Dapper, paging)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderingUrl}}/api/orders?customerCode={{customerCode}}&page=1&pageSize=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Insufficient Stock (sync check)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "gRPC ile yapılan senkron stok kontrolü reddeder.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"{{customerCode}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{monitorId}}\",\n      \"quantity\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Stock Race (async reject)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "Monitör stoğu 3. Bu isteği art arda 2 kez çalıştırın: ikisi de senkron kontrolü geçer, ancak ikinci siparişte Inventory rezervasyonu reddeder ve StockReservationFailed event'i ile sipariş Rejected olur (compensation).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"{{customerCode}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{monitorId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "if (body.orderId) { pm.collectionVariables.set('orderId', body.orderId); }",
+                  "pm.test('orderId returned', () => pm.expect(body.orderId).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Blocked Customer (ACL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "ERP'de STAT_CD = 'B'. ACL bunu IsActive = false olarak çevirir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"C-1002\",\n  \"items\": [\n    {\n      \"productId\": \"{{mouseId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Credit Limit Exceeded (ACL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "ERP'de CRD_LMT '10.000,00', CRD_USED '9.500,00' -> kullanılabilir kredi 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"C-1003\",\n  \"items\": [\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Unknown Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"C-9999\",\n  \"items\": [\n    {\n      \"productId\": \"{{mouseId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Validation Error (Pipeline)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "description": "ValidationBehavior: handler'a ulaşmadan 400 + errors listesi döner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"\",\n  \"items\": [\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 0\n    },\n    {\n      \"productId\": \"{{keyboardId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Missing Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{orderingUrl}}/api/orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerCode\": \"{{customerCode}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{mouseId}}\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Legacy ERP & Resilience Demo",
+      "item": [
+        {
+          "name": "ERP - Get Customer (raw legacy model)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{erpUrl}}/erp/api/v1/musteri/C-1001",
+            "description": "ACL'in çevirdiği ham model: CUST_NO, STAT_CD, CRD_LMT ('50.000,00')..."
+          }
+        },
+        {
+          "name": "ERP - Get Chaos Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{erpUrl}}/chaos"
+          }
+        },
+        {
+          "name": "ERP - Chaos: 100% Failure (Circuit Breaker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{erpUrl}}/chaos",
+            "description": "Ardından 'Create Order - Happy Path' isteğini birkaç kez çalıştırın: önce retry'lar (Seq), sonra devre açılır ve yanıt anında 503 döner.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"failureRate\": 1.0,\n  \"delayMs\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "ERP - Chaos: 3s Latency (Timeout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{erpUrl}}/chaos",
+            "description": "Attempt timeout 2 sn olduğu için her deneme zaman aşımına uğrar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"failureRate\": 0.0,\n  \"delayMs\": 3000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "ERP - Chaos: Off",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{erpUrl}}/chaos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"failureRate\": 0.0,\n  \"delayMs\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Observability",
+      "item": [
+        {
+          "name": "Ordering - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderingUrl}}/health"
+          }
+        },
+        {
+          "name": "Inventory - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{inventoryUrl}}/health"
+          }
+        },
+        {
+          "name": "Ordering - CAP Dashboard (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderingUrl}}/cap"
+          }
+        },
+        {
+          "name": "Inventory - CAP Dashboard (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{inventoryUrl}}/cap"
+          }
+        },
+        {
+          "name": "Seq UI (open in browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:5341"
+          }
+        },
+        {
+          "name": "RabbitMQ Management (admin/admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:15672"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "orderingUrl",
+      "value": "http://localhost:5001"
+    },
+    {
+      "key": "inventoryUrl",
+      "value": "http://localhost:5002"
+    },
+    {
+      "key": "erpUrl",
+      "value": "http://localhost:5003"
+    },
+    {
+      "key": "keyboardId",
+      "value": "11111111-1111-1111-1111-111111111111"
+    },
+    {
+      "key": "mouseId",
+      "value": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "key": "monitorId",
+      "value": "33333333-3333-3333-3333-333333333333"
+    },
+    {
+      "key": "customerCode",
+      "value": "C-1001"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "productIdempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    }
+  ]
+}

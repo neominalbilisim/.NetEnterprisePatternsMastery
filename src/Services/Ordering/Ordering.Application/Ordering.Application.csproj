@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Use case'ler (Command/Query handler'lar) ve driven port tanımları. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Ordering.Domain\Ordering.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\Contracts\Contracts.IntegrationEvents\Contracts.IntegrationEvents.csproj" />
+  </ItemGroup>
+</Project>
