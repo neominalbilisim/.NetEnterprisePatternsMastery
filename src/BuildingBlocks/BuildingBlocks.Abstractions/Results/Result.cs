@@ -36,6 +36,7 @@ public class Result
     public static implicit operator Result(Error error) => Failure(error);
 }
 
+
 public class Result<TValue> : Result
 {
     private readonly TValue? _value;
@@ -52,5 +53,6 @@ public class Result<TValue> : Result
     // bu durumlarda Result.Success<T>(...) / Result.Failure<T>(...) açıkça kullanılır.
     public static implicit operator Result<TValue>(TValue value) => Success(value);
 
+    // return Error nesnesi gelirse Result Failure çevir. her seferinde Result Failure yazmak zorunda kalmayız.
     public static implicit operator Result<TValue>(Error error) => Failure<TValue>(error);
 }

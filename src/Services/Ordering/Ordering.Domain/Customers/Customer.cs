@@ -50,6 +50,8 @@ public sealed class Customer : AggregateRoot<Guid>
     {
         if (string.IsNullOrWhiteSpace(code))
         {
+            // return Result.Failure<Customer>(CustomerErrors.CodeRequired);
+            // Result sınıfında implicit operatörle daha kısa bir formatta yazdık.
             return CustomerErrors.CodeRequired;
         }
 

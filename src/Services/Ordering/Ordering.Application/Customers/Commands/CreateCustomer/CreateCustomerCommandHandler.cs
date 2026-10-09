@@ -24,6 +24,10 @@ internal sealed class CreateCustomerCommandHandler(
     {
         // 1) Müşteri kodu benzersizlik kontrolü (Specification Pattern kullanımı)
         var customerByCodeSpec = new CustomerByCodeSpec(command.Code);
+        //var customerByCodeOrcustomerByEmailSpec = customerByCodeSpec.Or(new CustomerByEmailSpec(command.Email));
+      
+        
+
         var existingCustomerByCode = await customerRepository.FirstOrDefaultAsync(customerByCodeSpec, cancellationToken);
 
         if (existingCustomerByCode != null)

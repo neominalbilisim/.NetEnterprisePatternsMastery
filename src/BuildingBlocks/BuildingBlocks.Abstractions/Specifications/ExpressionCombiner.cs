@@ -3,7 +3,8 @@ using System.Linq.Expressions;
 namespace BuildingBlocks.Abstractions.Specifications;
 
 /// <summary>
-/// İki lambda ifadesini tek bir parametre üzerinde birleştirir.
+/// ExpressionCombiner, iki filtre koşulunu tek bir koşulda birleştirir.
+/// Specification.And ve Or metotları işi ona devreder. Örneğin “kodu C-1001 olanlar” ile “e-postası a@b.com olanlar” koşullarından c.Code == "C-1001" || c.Email == "a@b.com" koşulunu üretir.
 /// Parametreleri ortaklaştırmak gerekir; aksi halde EF Core ifadeyi SQL'e çeviremez.
 /// </summary>
 internal static class ExpressionCombiner
