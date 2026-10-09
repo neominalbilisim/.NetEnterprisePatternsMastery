@@ -5,6 +5,7 @@ using Grpc.Net.Client.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Ordering.Application.Ports;
+using Ordering.Domain.Customers;
 using Ordering.Domain.Orders;
 using Ordering.Infrastructure.Adapters.Grpc;
 using Ordering.Infrastructure.Adapters.LegacyErp;
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddCapMessaging<OrderingDbContext>(configuration, groupName: "ordering");
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IOrderReadRepository, DapperOrderReadRepository>();
 
         services.AddInventoryGrpcClient(configuration);

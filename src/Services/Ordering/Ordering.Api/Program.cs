@@ -33,6 +33,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapOrderEndpoints();
+app.MapCustomerEndpoints();
 app.MapHealthChecks("/health");
 
 await app.Services.EnsureDatabaseCreatedAsync<OrderingDbContext>();
