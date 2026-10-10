@@ -7,7 +7,10 @@ public sealed class OrderByIdWithItemsSpec : Specification<Order>
 {
     public OrderByIdWithItemsSpec(Guid orderId) : base(order => order.Id == orderId)
     {
-        AddInclude(order => order.Items);
+     AddInclude(x => x.Items);
+     //ApplyOrderBy(x => x.CreatedOnUtc);
+     //ApplyOrderByDescending(x => x.CustomerCode);
+     //ApplyPaging(10, 20);
     }
 }
 

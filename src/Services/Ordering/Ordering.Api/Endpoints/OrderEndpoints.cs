@@ -1,3 +1,5 @@
+using BuildingBlocks.Abstractions.Persistence;
+using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +33,8 @@ public static class OrderEndpoints
         [FromHeader(Name = IdempotencyKeyHeader)] Guid? idempotencyKey,
         CreateOrderRequest request,
         ISender sender,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+        )
     {
         if (idempotencyKey is null || idempotencyKey == Guid.Empty)
         {
@@ -45,10 +48,23 @@ public static class OrderEndpoints
         var items = request.Items?.Select(i => new CreateOrderItem(i.ProductId, i.Quantity)).ToList()
                     ?? new List<CreateOrderItem>();
 
-        var result = await sender.Send(
+
+   
+
+    var result = await sender.Send(
             new CreateOrderCommand(idempotencyKey.Value, request.CustomerCode, items), cancellationToken);
 
-        return result.Match(orderId =>
+
+    // transaction commit olduğuna eminiz.
+
+    //if(result.IsSuccess)
+    //{
+    //  var queryResult = await sender.Send(new GetCustomerOrdersQuery(request.CustomerCode));
+    //}
+
+
+
+    return result.Match(orderId =>
             Results.Created($"/api/orders/{orderId}", new { OrderId = orderId }));
   }
 

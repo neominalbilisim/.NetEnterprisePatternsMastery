@@ -19,6 +19,7 @@ public sealed class CustomerByCodeSpec : Specification<Customer>
 {
     public CustomerByCodeSpec(string code) : base(c => c.Code == code)
     {
+      ApplyNoTracking(); // performanslı bir sorgu
     }
 }
 

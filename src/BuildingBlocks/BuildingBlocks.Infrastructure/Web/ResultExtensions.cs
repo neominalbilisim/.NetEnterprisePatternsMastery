@@ -14,7 +14,8 @@ public static class ResultExtensions
     public static IResult Match(this Result result, Func<IResult> onSuccess) =>
         result.IsSuccess ? onSuccess() : result.ToProblem();
 
-    public static IResult ToProblem(this Result result)
+  // Uygulama içerisinde eğer herhangi bir Result nesnesi başarısız ise, bu metot ile HTTP yanıtı olarak Problem Details formatında dönebiliriz.
+  public static IResult ToProblem(this Result result)
     {
         if (result.IsSuccess)
         {

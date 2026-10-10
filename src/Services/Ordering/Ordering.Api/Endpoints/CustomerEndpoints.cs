@@ -1,3 +1,4 @@
+using BuildingBlocks.Abstractions.Persistence;
 using BuildingBlocks.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -27,10 +28,10 @@ public static class CustomerEndpoints
     private static async Task<IResult> CreateCustomerAsync(
         CreateCustomerRequest request,
         ISender sender,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+        )
     {
         
-
         var result = await sender.Send(
             new CreateCustomerCommand(
                 Guid.NewGuid(),
@@ -41,7 +42,10 @@ public static class CustomerEndpoints
                 request.TaxId),
             cancellationToken);
 
-        return result.Match(customerId =>
+
+    // bu yapıda result döndürken eğer result başarılı başarısz durumları varsaki commandalerde bu durumlar çok oluşur. O zaman result.Match ile başarılı ve başarısız durumları ayırıp uygun HTTP yanıtını döndürebiliriz. Örneğin, başarılı ise 201 Created döndürürüz, başarısız ise 400 Bad Request veya 404 Not Found gibi uygun yanıtları döndürebiliriz.
+    // Commandler ile çalışırken result.Match kullanalım.
+    return result.Match(customerId =>
             Results.Created($"/api/customers/{customerId}", new { CustomerId = customerId }));
     }
 
@@ -57,7 +61,8 @@ public static class CustomerEndpoints
             return Results.NotFound(new { message = $"Customer '{customerId}' was not found." });
         }
 
-        return Results.Ok(new CustomerResponse(
+    // Query yapıları ile çalışırken direkt olarak Result.Ok döndürebiliriz. Çünkü queryler genellikle veri getirme işlemleri için kullanılır ve başarılı veya başarısız durumları daha azdır. Bu nedenle, queryler için result.Match kullanmak yerine doğrudan Result.Ok döndürebiliriz.
+    return Results.Ok(new CustomerResponse(
             customer.Id,
             customer.Code,
             customer.Name,

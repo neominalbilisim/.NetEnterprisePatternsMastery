@@ -24,13 +24,17 @@ internal sealed class CreateCustomerCommandHandler(
     {
         // 1) Müşteri kodu benzersizlik kontrolü (Specification Pattern kullanımı)
         var customerByCodeSpec = new CustomerByCodeSpec(command.Code);
-        //var customerByCodeOrcustomerByEmailSpec = customerByCodeSpec.Or(new CustomerByEmailSpec(command.Email));
-      
-        
+    //var customerByCodeOrcustomerByEmailSpec = customerByCodeSpec.And(new CustomerByEmailSpec(command.Email));
 
-        var existingCustomerByCode = await customerRepository.FirstOrDefaultAsync(customerByCodeSpec, cancellationToken);
+    
 
-        if (existingCustomerByCode != null)
+
+
+    var existingCustomerByCode = await customerRepository.FirstOrDefaultAsync(customerByCodeSpec, cancellationToken);
+  
+    // FirstOrDefaultAsync çağırdığımız SpecEvulator GetQuery Methodu ile Lamda Expression spec içerisindeki bilgileri çekerek LINQ sorgusuna çeviriyoruz. 
+
+    if (existingCustomerByCode != null)
         {
             return CustomerErrors.DuplicateCode(command.Code);
         }
@@ -61,7 +65,7 @@ internal sealed class CreateCustomerCommandHandler(
 
         // 4) Kalıcılaştırma: SaveChanges -> CustomerCreatedDomainEvent -> Event Handlers (Outbox Pattern)
         customerRepository.Add(customer);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        //await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Customer {CustomerId} created with code {Code} and name {Name}",
